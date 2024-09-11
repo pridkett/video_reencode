@@ -41,6 +41,7 @@ class VideoInfo(TypedDict):
     file_path: str
     file_size: int
     duration: int
+    codec_name: str
 
 def get_video_info_supplemental(file_path: str) -> Dict[str, Any]:
     """
@@ -86,14 +87,15 @@ def get_video_info(file_path: str) -> Union[VideoInfo, None]:
             'bit_rate': 5000000,
             'duration': 3600,
             'file_path': '/path/to/video.mp4',
-            'file_size': 10485760
+            'file_size': 10485760,
+            'codec_name': 'h264'
         }
     """
     try:
         # Command to get video stream information
         ffprobe_cmd = [
             "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-            "stream=width,height,bit_rate,duration", "-of", "json", file_path
+            "stream=width,height,bit_rate,duration,codec_name", "-of", "json", file_path
         ]
         # Run ffprobe and capture output
         result = subprocess.run(ffprobe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -172,6 +174,7 @@ def main(video_dir: str, video_extensions: List[str], output_json: bool = False)
     # Print results
     table = Table(title=f"\nVideos (sorted by bitrate)")
     table.add_column("File Path")
+    table.add_column("Codec", style="yellow")
     table.add_column("Bit Rate (kbps)", style="cyan")
     table.add_column("Duration", style="magenta")
 
@@ -180,10 +183,11 @@ def main(video_dir: str, video_extensions: List[str], output_json: bool = False)
         table.add_row(f"[bold]{group.upper()}", style="bright_white on green")
         for file_info in files:
             file_path = file_info['file_path']
+            codec_name = file_info.get('codec_name', 'UNKNOWN')
             bit_rate = int(file_info.get('bit_rate', 0) / 1024)
             duration = file_info.get('duration', 0)
             duration_formatted = str(datetime.timedelta(seconds=duration))
-            table.add_row(file_path, str(bit_rate), duration_formatted)
+            table.add_row(file_path, codec_name, str(bit_rate), duration_formatted)
 
     console = Console()
     console.print(table)
